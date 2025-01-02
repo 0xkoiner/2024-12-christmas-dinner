@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 
-import { IERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 pragma solidity 0.8.27;
 
@@ -33,20 +33,21 @@ contract ChristmasDinner {
     IERC20 public immutable i_WETH;
     IERC20 public immutable i_USDC;
 
-
     ////////////////////////////////////////////////////////////////
     //////////////////       State Variables       /////////////////
     ////////////////////////////////////////////////////////////////
     address public host;
     uint256 public deadline;
-    bool public deadlineSet = false;
     bool private locked = false;
-    mapping (address user => bool) participant;
-    mapping (address user => mapping (address token => uint256 balance )) balances;
-    mapping (address user => uint256 amount) etherBalance;
-    mapping (address token => bool ) whitelisted;
+    bool public deadlineSet = false;
 
-    constructor (address _WBTC, address _WETH, address _USDC) {
+    mapping(address user => bool) public participant;
+    mapping(address token => bool) public whitelisted;
+    mapping(address user => uint256 amount) public etherBalance;
+    mapping(address user => mapping(address token => uint256 balance))
+        public balances;
+
+    constructor(address _WBTC, address _WETH, address _USDC) {
         host = msg.sender;
         i_WBTC = IERC20(_WBTC);
         whitelisted[_WBTC] = true;
@@ -61,14 +62,14 @@ contract ChristmasDinner {
     ////////////////////////////////////////////////////////////////
 
     modifier onlyHost() {
-        if(msg.sender != host) {
+        if (msg.sender != host) {
             revert NotHost();
         }
         _;
     }
 
     modifier beforeDeadline() {
-        if(block.timestamp > deadline) {
+        if (block.timestamp > deadline) {
             revert BeyondDeadline();
         }
         _;
@@ -79,7 +80,6 @@ contract ChristmasDinner {
         _;
         locked = false;
     }
-
 
     ////////////////////////////////////////////////////////////////
     //////////////////      External Functions     /////////////////
@@ -113,10 +113,10 @@ contract ChristmasDinner {
      * @param _amount the amount the user wishes to contribute
      */
     function deposit(address _token, uint256 _amount) external beforeDeadline {
-        if(!whitelisted[_token]) {
+        if (!whitelisted[_token]) {
             revert NotSupportedToken();
         }
-        if(participant[msg.sender]){
+        if (participant[msg.sender]) {
             balances[msg.sender][_token] += _amount;
             IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
             emit GenerousAdditionalContribution(msg.sender, _amount);
@@ -124,14 +124,17 @@ contract ChristmasDinner {
             participant[msg.sender] = true;
             balances[msg.sender][_token] += _amount;
             IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-            emit NewSignup(msg.sender, _amount, getParticipationStatus(msg.sender));
+            emit NewSignup(
+                msg.sender,
+                _amount,
+                getParticipationStatus(msg.sender)
+            );
         }
-
     }
 
     /**
-     * @dev Refund function if people do not want to attend the event anymore, 
-     * pays out all underlying assets. Reentrancy safe via mutex lock, therefor 
+     * @dev Refund function if people do not want to attend the event anymore,
+     * pays out all underlying assets. Reentrancy safe via mutex lock, therefor
      * CEI does not necessarly need to be followed.
      */
     function refund() external nonReentrant beforeDeadline {
@@ -146,9 +149,9 @@ contract ChristmasDinner {
      * But strictly enforces that false can not be changed to true after the deadline
      */
     function changeParticipationStatus() external {
-        if(participant[msg.sender]) {
+        if (participant[msg.sender]) {
             participant[msg.sender] = false;
-        } else if(!participant[msg.sender] && block.timestamp <= deadline) {
+        } else if (!participant[msg.sender] && block.timestamp <= deadline) {
             participant[msg.sender] = true;
         } else {
             revert BeyondDeadline();
@@ -165,7 +168,7 @@ contract ChristmasDinner {
      * @param _newHost an arbitrary user which is participant
      */
     function changeHost(address _newHost) external onlyHost {
-        if(!participant[_newHost]) {
+        if (!participant[_newHost]) {
             revert OnlyParticipantsCanBeHost();
         }
         host = _newHost;
@@ -173,12 +176,12 @@ contract ChristmasDinner {
     }
 
     /**
-     * @dev changes the deadline until which attendees can sign up. Any sign up or refund after the deadline 
+     * @dev changes the deadline until which attendees can sign up. Any sign up or refund after the deadline
      * should never be possible to assure proper planning for the attendees
      * @param _days Number in days until when the host has to know who attends
      */
     function setDeadline(uint256 _days) external onlyHost {
-        if(deadlineSet) {
+        if (deadlineSet) {
             revert DeadlineAlreadySet();
         } else {
             deadline = block.timestamp + _days * 1 days;
@@ -188,7 +191,7 @@ contract ChristmasDinner {
 
     /**
      * @dev withdraws all tokens from the contract into the host wallet, to fascilitate the event.
-     * we do not have reentrancy considerations, since this function is supposed to sweep the contract anyway 
+     * we do not have reentrancy considerations, since this function is supposed to sweep the contract anyway
      */
 
     function withdraw() external onlyHost {
@@ -199,7 +202,7 @@ contract ChristmasDinner {
     }
     ///////////////////////// Receive  Function to handle Ether Deposits  //////////////////////////
     /**
-     * @dev handles ether signups, users sending ether to this contract will still be tracked 
+     * @dev handles ether signups, users sending ether to this contract will still be tracked
      * with their balances and participation status.
      */
     receive() external payable {
