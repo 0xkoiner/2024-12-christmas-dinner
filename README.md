@@ -44,6 +44,18 @@ src/
 ├── ChristmasDinner.sol
 ```
 
+## @audit
+
+All Findings in `@audit` and full report.
+
+```js
+├── @audit
+│   ├── audit-report
+│       ├── auditreportforpdf.md
+│       └── auditreportforpdf.pdf
+
+```
+
 ## Compatibilities
 
 ```
